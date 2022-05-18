@@ -9,8 +9,9 @@ import (
 	graphql "github.com/cli/shurcooL-graphql"
 )
 
-var searchflag = flag.String("s", "is:pr author:@me is:open archived:false", "a github search string")
+var searchflag = flag.String("s", "review-requested:@me is:open archived:false", "a github search string")
 var warntime = flag.Duration("w", 4*24*time.Hour, "time duration after which to warn that a PR needs attention")
+var limitflag = flag.Int("limit", 30, "maximum number of results to return")
 
 func main() {
 	flag.Parse()
@@ -131,8 +132,6 @@ func (p PRInfo) StatusRollupRune() string {
 		return "❌"
 	case "PENDING", "EXPECTED":
 		return "⏱"
-	default:
-		fmt.Printf("UNknown rollup: %s", p.Commits.Nodes[0].Commit.StatusCheckRollup.State)
 	}
 	return "❓"
 }
@@ -142,36 +141,15 @@ func (p PRInfo) SinceLastUpdate() time.Duration {
 }
 
 func (p PRInfo) LastUpdatedStatus() string {
+	displaystring := fmt.Sprintf("%0.1fd", p.SinceLastUpdate().Hours()/24)
 	switch t := p.SinceLastUpdate(); {
 	case t > *warntime:
-		return fmt.Sprintf("🚨(%s)", t.Round(time.Hour).String())
+		return fmt.Sprintf("🚨(%s)", displaystring)
 	default:
 		return fmt.Sprintf("(%s)", t.Round(time.Hour).String())
 
 	}
 }
-
-// func (p PRInfo) FailingChecks() string {
-// 	sb := strings.Builder{}
-// 	for _, c := range p.Commits.Nodes[0].Commit.Status.CombinedContexts.Nodes {
-// 		if c.StatusContext.State != "" {
-// 			sb.WriteString(fmt.Sprintf("\tSC: %s: %s\n",
-// 				c.StatusContext.Context, c.StatusContext.State))
-// 		}
-// 		if c.CheckRun.Status != "" {
-// 			sb.WriteString(fmt.Sprintf("\tCR: %s: %s\n",
-// 				c.CheckRun.Name, c.CheckRun.Status))
-
-// 		}
-// 	}
-// 	// now check the checksuites
-// 	for _, c := range p.Commits.Nodes[0].Commit.CheckSuites.Nodes {
-// 		for _, r := range c.CheckRuns.Nodes {
-// 			sb.WriteString(fmt.Sprintf("\tCS.CR: %s: %s-%s\n", r.Name, r.Status, r.Conclusion))
-// 		}
-// 	}
-// 	return sb.String()
-// }
 
 func SearchPRs(q string) ([]PRInfo, error) {
 	gqClient, err := gh.GQLClient(nil)
@@ -186,16 +164,16 @@ func SearchPRs(q string) ([]PRInfo, error) {
 		} `graphql:"search(type: ISSUE, first: $limit, query: $query)"`
 	}
 	queryvars := map[string]interface{}{
-		// TODO: increase limit again once status checks work.
-		"limit": graphql.Int(2),
-		"query": graphql.String(q),
+		"limit": graphql.Int(*limitflag),
+		// Note: 'is:pr' is necessary, as the search api returns an empty set without it.
+		"query": graphql.String(q) + " is:pr sort:updated-asc",
 	}
 	err = gqClient.Query("SearchPRs", &query, queryvars)
 	if err != nil {
 		return nil, err
 	}
-	// fmt.Printf("Query results: %#v", query)
-	prinfos := make([]PRInfo, 0, len(query.Search.Nodes))
+	// fmt.Printf("Query results: %#v\n", query)
+	prinfos := make([]PRInfo, 0)
 	for _, n := range query.Search.Nodes {
 		prinfos = append(prinfos, n.PullRequest)
 	}
