@@ -146,7 +146,7 @@ func (p PRInfo) LastUpdatedStatus() string {
 	case t > *warntime:
 		return fmt.Sprintf("🚨(%s)", displaystring)
 	default:
-		return fmt.Sprintf("(%s)", t.Round(time.Hour).String())
+		return fmt.Sprintf("(%s)", displaystring)
 
 	}
 }
