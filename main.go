@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	gloss "github.com/charmbracelet/lipgloss"
 	"github.com/cli/go-gh"
 	graphql "github.com/cli/shurcooL-graphql"
 )
@@ -12,6 +13,19 @@ import (
 var searchflag = flag.String("s", "review-requested:@me is:open archived:false", "a github search string")
 var warntime = flag.Duration("w", 4*24*time.Hour, "time duration after which to warn that a PR needs attention")
 var limitflag = flag.Int("limit", 30, "maximum number of results to return")
+
+// Status indicators, used in various single-character status displays:
+var StatusGood = gloss.NewStyle().Bold(true).Foreground(gloss.Color("#00ff00")).Render("🗸")
+var StatusBad = gloss.NewStyle().Bold(true).Foreground(gloss.Color("#ff0000")).Render("✖️")
+var StatusPending = gloss.NewStyle().Bold(true).Foreground(gloss.Color("#FF8000")).Render("️•")
+var StatusUnknown = gloss.NewStyle().Bold(true).Foreground(gloss.Color("#ff0000")).Render("⁉")
+
+var titleStyle = gloss.NewStyle().Bold(true).PaddingLeft(4)
+var urlStyle = gloss.NewStyle().PaddingLeft(4)
+var lastUpdatedStyle = gloss.NewStyle().Foreground(gloss.AdaptiveColor{Dark: "#222222", Light: "#aaaaaa"})
+var headerStyle = gloss.NewStyle().PaddingLeft(1).Width(40)
+var outOfSLOHeaderStyle = headerStyle.Copy().Foreground(gloss.Color("#ff0000")).Bold(true)
+var reviewIndicatorStyle = gloss.NewStyle().Width(20).Align(gloss.Left)
 
 func main() {
 	flag.Parse()
@@ -21,9 +35,22 @@ func main() {
 		return
 	}
 	for _, p := range prs {
-		fmt.Println(p)
+		// fmt.Println(p)
+		printPRInfo(p)
 	}
 
+}
+
+func printPRInfo(p PRInfo) {
+	var style = headerStyle
+	if p.SinceLastUpdate() >= *warntime {
+		style = outOfSLOHeaderStyle
+	}
+	slug := fmt.Sprintf("%s/%d", p.BaseRepository.Name, p.Number)
+	fmt.Print(p.StatusRollupRune())
+	fmt.Print(style.Render(slug) + reviewIndicatorStyle.Render("R:"+p.ReviewStatus()) + lastUpdatedStyle.Render(p.LastUpdatedStatus()) + "\n")
+	fmt.Println(titleStyle.Render(p.Title))
+	fmt.Println(urlStyle.Render(p.URL))
 }
 
 // For more examples of using go-gh, see:
@@ -84,56 +111,30 @@ type Commits struct {
 	}
 }
 
-// format a PRInfo object for printing.
-func (p PRInfo) String() string {
-	return fmt.Sprintf(
-		"%s %s/%d: R:%c M:%s %s\n\t%s\n\t%s\n",
-		p.StatusRollupRune(),
-		p.BaseRepository.Name, p.Number,
-		p.ReviewRune(), p.CanMergeRune(), p.LastUpdatedStatus(),
-		p.Title, p.URL)
-}
-func (p PRInfo) ReviewRune() rune {
+func (p PRInfo) ReviewStatus() string {
 	switch p.ReviewDecision {
 	case "APPROVED":
-		return '✅'
+		return StatusGood
 	case "REVIEW_REQUIRED":
-		return '⏱'
+		return StatusPending
 	case "CHANGES_REQUESTED":
-		return '🛑'
+		return StatusBad
 	default:
-		return '❓'
+		return StatusUnknown
 	}
 }
-func (p PRInfo) StateRune() string {
-	switch p.State {
-	case "OPEN":
-		return "⛏"
-	case "MERGED":
-		return "✅"
-	default:
-		return "❓"
-	}
-}
-func (p PRInfo) CanMergeRune() string {
-	switch p.Mergeable {
-	case "MERGEABLE":
-		return "✅"
-	default:
-		return "❓"
-	}
-}
+
 func (p PRInfo) StatusRollupRune() string {
 	// https://docs.github.com/en/graphql/reference/enums#statusstate
 	switch p.Commits.Nodes[0].Commit.StatusCheckRollup.State {
 	case "SUCCESS":
-		return "✅"
+		return StatusGood
 	case "FAILURE", "ERROR":
-		return "❌"
+		return StatusBad
 	case "PENDING", "EXPECTED":
-		return "⏱"
+		return StatusPending
 	}
-	return "❓"
+	return StatusUnknown
 }
 
 func (p PRInfo) SinceLastUpdate() time.Duration {
@@ -144,7 +145,7 @@ func (p PRInfo) LastUpdatedStatus() string {
 	displaystring := fmt.Sprintf("%0.1fd", p.SinceLastUpdate().Hours()/24)
 	switch t := p.SinceLastUpdate(); {
 	case t > *warntime:
-		return fmt.Sprintf("🚨(%s)", displaystring)
+		return fmt.Sprintf("(%s)🚨", displaystring)
 	default:
 		return fmt.Sprintf("(%s)", displaystring)
 
