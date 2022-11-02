@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	graphql "github.com/cli/shurcooL-graphql"
@@ -16,7 +18,9 @@ var limitflag = flag.Int("limit", 30, "maximum number of results to return")
 
 func main() {
 	flag.Parse()
-	prs, err := search.SearchPRs(*searchflag, map[string]interface{}{
+	extra_search_args := os.Getenv("GH_SLOCHECK_SEARCH_EXTRAS")
+	searchstr := strings.Join([]string{*searchflag, extra_search_args}, " ")
+	prs, err := search.SearchPRs(searchstr, map[string]interface{}{
 		"limit": graphql.Int(*limitflag),
 	})
 	if err != nil {
