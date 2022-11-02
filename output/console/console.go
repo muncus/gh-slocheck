@@ -39,7 +39,7 @@ func (c *ConsoleFormatter) Print(w io.Writer, p search.PRInfo) error {
 // ToString returns the string representation of the provided PRInfo.
 func (c *ConsoleFormatter) ToString(p search.PRInfo) string {
 	return fmt.Sprintf("C:%s R:%s (%s) -- %s\n  %s\n  %s\n",
-		StatusRollupSigil(p), reviewSigil(p), c.lastUpdate(p), getSlug(p), p.Title, p.URL)
+		statusRollupSigil(p), reviewSigil(p), c.lastUpdate(p), getSlug(p), p.Title, p.URL)
 }
 func getSlug(p search.PRInfo) string {
 	return titleStyle.Render(fmt.Sprintf("%s#%d", p.BaseRepository.Name, p.Number))
@@ -57,7 +57,7 @@ func reviewSigil(p search.PRInfo) string {
 	return StatusUnknown
 }
 
-func StatusRollupSigil(p search.PRInfo) string {
+func statusRollupSigil(p search.PRInfo) string {
 	// https://docs.github.com/en/graphql/reference/enums#statusstate
 	switch p.Commits.Nodes[0].Commit.StatusCheckRollup.State {
 	case "SUCCESS":
