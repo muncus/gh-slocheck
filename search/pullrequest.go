@@ -42,6 +42,7 @@ type PRInfo struct {
 	URL            string
 	State          string
 	Mergeable      string
+	Merged         bool
 	ReviewDecision string
 	BaseRepository struct {
 		Name          string

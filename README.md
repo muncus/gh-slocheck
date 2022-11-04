@@ -23,6 +23,7 @@ For each PR, the tool presents (in order, from the left):
     do the required checks pass)
     - Green checkmark for passing, red X if failing, and a yellow dot if actions are still running.
 1. Review Status - green check for approved, red x for changes requested, orange dot for pending.
+1. Merge Status - green check for merged, orange dot for mergeable, red x for conflicts.
 1. Time Since Last Updated - Listed in days
 1. A 'slug' of repository name and PR number, for reference.
 1. The full Title of the PR
