@@ -38,13 +38,26 @@ func (c *ConsoleFormatter) Print(w io.Writer, p search.PRInfo) error {
 
 // ToString returns the string representation of the provided PRInfo.
 func (c *ConsoleFormatter) ToString(p search.PRInfo) string {
-	return fmt.Sprintf("C:%s R:%s (%s) -- %s\n  %s\n  %s\n",
-		statusRollupSigil(p), reviewSigil(p), c.lastUpdate(p), getSlug(p), p.Title, p.URL)
+	return fmt.Sprintf("C:%s R:%s M:%s (%s) -- %s\n  %s\n  %s\n",
+		statusRollupSigil(p), reviewSigil(p), mergeStatusSigil(p),
+		c.lastUpdate(p), getSlug(p), p.Title, p.URL)
 }
 func getSlug(p search.PRInfo) string {
 	return titleStyle.Render(fmt.Sprintf("%s#%d", p.BaseRepository.Name, p.Number))
 }
 
+func mergeStatusSigil(p search.PRInfo) string {
+	if p.Merged {
+		return StatusGood
+	}
+	switch p.Mergeable {
+	case "MERGEABLE":
+		return StatusPending
+	case "CONFLICTING":
+		return StatusBad
+	}
+	return StatusUnknown
+}
 func reviewSigil(p search.PRInfo) string {
 	switch p.ReviewDecision {
 	case "APPROVED":
