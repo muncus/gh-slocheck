@@ -66,7 +66,7 @@ func (p PRInfo) SinceLastUpdate() time.Duration {
 	return time.Since(p.UpdatedAt)
 }
 
-func SearchPRs(q string, vars map[string]interface{}) (PRSet, error) {
+func SearchPRs(q string, vars map[string]any) (PRSet, error) {
 	gqClient, err := gh.GQLClient(nil)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create GraphQL client: %v", err)

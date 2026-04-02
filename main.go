@@ -37,7 +37,7 @@ func main() {
 	results := search.PRSet{}
 	for _, query := range *searchflag {
 		searchstr := strings.Join([]string{query, extra_search_args}, " ")
-		prs, err := search.SearchPRs(searchstr, map[string]interface{}{
+		prs, err := search.SearchPRs(searchstr, map[string]any{
 			"limit": graphql.Int(*limitflag),
 		})
 		if err != nil {
